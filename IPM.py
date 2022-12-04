@@ -6,6 +6,7 @@ from utils import *
 
 # IPM
 def IPM(camParam, ROI, resH, resW):
+    # Calculate vanishing point and adjust top edge of ROI adaptively
     vp = vanishingPt(camParam)
     ROI.top = float(max(int(vp[1]), ROI.top))
 
@@ -16,9 +17,9 @@ def IPM(camParam, ROI, resH, resW):
     # Limites in the xy plane (unit: mm)
     xyLimits = img2grd(uvLimits, camParam)
 
+    # Calculate physical size of each pixel
     xMin, xMax = min(xyLimits[0]), max(xyLimits[0])
     yMin, yMax = min(xyLimits[1]), max(xyLimits[1])
-
     stepRow = (yMax - yMin) / resH  # mm per vertical px
     stepCol = (xMax - xMin) / resW  # mm per horizontal px
     print("Vertical scale: %.2f mm/px" % stepRow)
@@ -33,6 +34,7 @@ def IPM(camParam, ROI, resH, resW):
     xyGrid = np.array([x.flatten(), y.flatten()])
 
     # Back to the pixel space (image plane)
+    # to sample the source image
     uvGrid = grd2img(xyGrid, camParam)
 
     return uvGrid

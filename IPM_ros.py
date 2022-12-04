@@ -21,6 +21,8 @@ class RealTimeIPM(object):
 
         self.resH, self.resW = 640, 640
         uvGrid = IPM(camParam, ROI, self.resH, self.resW)
+
+        # Prepare for bilinear interpolation in the callback
         self.mask = np.zeros(len(uvGrid[0]))
         self.mask = (ROI.left <= uvGrid[0]) & (uvGrid[0] <= ROI.right) \
                     & (ROI.top <= uvGrid[1]) & (uvGrid[1] <= ROI.bottom)
@@ -44,6 +46,7 @@ class RealTimeIPM(object):
 
         height, width = srcImg.shape[:2] 
         
+        # Bilinear interpolation
         resImg = np.zeros((self.resH, self.resW, 3))
         x1 = np.clip(self.x1, 0, width - 1)
         x2 = np.clip(self.x2, 0, width - 1)
