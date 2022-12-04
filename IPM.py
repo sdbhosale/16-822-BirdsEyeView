@@ -30,10 +30,11 @@ xyLimits = img2grd(uvLimits, camParam)
 xMin, xMax = min(xyLimits[0]), max(xyLimits[0])
 yMin, yMax = min(xyLimits[1]), max(xyLimits[1])
 
-xyRatio = (xMax - xMin) / (yMax - yMin)
 resImg = np.zeros((resH, resW, 3))
-stepRow = (yMax - yMin) / resH
-stepCol = (xMax - xMin) / resW
+stepRow = (yMax - yMin) / resH  # mm per vertical px
+stepCol = (xMax - xMin) / resW  # mm per horizontal px
+print("Vertical scale: %.2f mm/px" % stepRow)
+print("Horizontal scale: %.2f mm/px" % stepCol)
 
 # Create a 2D array of x and y values, 
 # with x increasing along the rows and y increasing along the columns
