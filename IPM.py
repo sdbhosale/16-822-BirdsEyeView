@@ -4,7 +4,10 @@ import json
 
 from utils import *
 
-img = cv2.imread('Images/IMG00996.jpeg')
+resH, resW = 640, 640
+
+imgPath = 'data/IMG00996.jpeg'
+img = cv2.imread(imgPath)
 height, width = img.shape[:2] 
 
 camera_key = "test"
@@ -24,60 +27,49 @@ uvLimits = np.array([[vp[0], ROI.top], [ROI.right, ROI.top],
 # Limites in the xy plane (unit: mm)
 xyLimits = img2grd(uvLimits, camParam)
 
-# =============STILL NEEDS MORE DOCUMENTATION BELOW================
-row1 = xyLimits[0, :]
-row2 = xyLimits[1, :]
-xfMin = min(row1)
-xfMax = max(row1)
-yfMin = min(row2)
-yfMax = max(row2)
-xyRatio = (xfMax - xfMin) / (yfMax - yfMin)
-outImage = np.zeros((640, 960, 4))
-outImage[:,:,3] = 255
-outRow, outCol = outImage.shape[:2]
-stepRow = (yfMax - yfMin) / outRow
-stepCol = (xfMax - xfMin) / outCol
-xyGrid = np.zeros((2, outRow * outCol))
-y = yfMax - 0.5 * stepRow
+xMin, xMax = min(xyLimits[0]), max(xyLimits[0])
+yMin, yMax = min(xyLimits[1]), max(xyLimits[1])
 
-for i in range(0, outRow):
-    x = xfMin + 0.5 * stepCol
-    for j in range(0, outCol):
-        xyGrid[0, (i-1) * outCol + j] = x
-        xyGrid[1, (i-1) * outCol + j] = y
-        x = x + stepCol
-    y = y - stepRow
+xyRatio = (xMax - xMin) / (yMax - yMin)
+resImg = np.zeros((resH, resW, 3))
+stepRow = (yMax - yMin) / resH
+stepCol = (xMax - xMin) / resW
+
+# Create a 2D array of x and y values, 
+# with x increasing along the rows and y increasing along the columns
+x = np.arange(xMin + 0.5 * stepCol, xMax, stepCol)
+y = np.arange(yMax - 0.5 * stepRow, yMin, -stepRow)
+x, y = np.meshgrid(x, y)
+
+xyGrid = np.array([x.flatten(), y.flatten()])
 
 # Back to the pixel space (image plane)
 uvGrid = grd2img(xyGrid, camParam)
 
-# mean value of the image
-means = np.mean(img) / 255
-RR = img.astype(float) / 255
+srcImg = img.astype(float) / 255
 
-for i in range(0, outRow):
-    for j in range(0, outCol):
-        ui = uvGrid[0, i*outCol+j]
-        vi = uvGrid[1, i*outCol+j]
-        #print(ui, vi)
-        if ui < ROI.left or ui > ROI.right or vi < ROI.top or vi > ROI.bottom:
-            outImage[i, j] = 0.0
-        else:
-            x1 = np.int32(ui)
-            x2 = np.int32(ui+0.5)
-            y1 = np.int32(vi)
-            y2 = np.int32(vi+0.5)
-            x = ui-float(x1)
-            y = vi-float(y1)
-            outImage[i, j, 0] = float(RR[y1, x1, 0])*(1-x)*(1-y)+float(RR[y1, x2, 0])*x*(1-y)+float(RR[y2, x1, 0])*(1-x)*y+float(RR[y2, x2, 0])*x*y
-            outImage[i, j, 1] = float(RR[y1, x1, 1])*(1-x)*(1-y)+float(RR[y1, x2, 1])*x*(1-y)+float(RR[y2, x1, 1])*(1-x)*y+float(RR[y2, x2, 1])*x*y
-            outImage[i, j, 2] = float(RR[y1, x1, 2])*(1-x)*(1-y)+float(RR[y1, x2, 2])*x*(1-y)+float(RR[y2, x1, 2])*(1-x)*y+float(RR[y2, x2, 2])*x*y
+mask = np.zeros(len(uvGrid[0]))
+mask = (ROI.left <= uvGrid[0]) & (uvGrid[0] <= ROI.right) & (ROI.top <= uvGrid[1]) & (uvGrid[1] <= ROI.bottom)
 
-outImage[-1,:] = 0.0 
+# Compute the bilinear interpolated values using the indices and the mask
+x1 = np.int32(uvGrid[0])
+x2 = np.int32(uvGrid[0]+0.5)
+y1 = np.int32(uvGrid[1])
+y2 = np.int32(uvGrid[1]+0.5)
+x = uvGrid[0] - x1
+y = uvGrid[1] - y1
+
+x1 = np.clip(x1, 0, width - 1)
+x2 = np.clip(x2, 0, width - 1)
+y1 = np.clip(y1, 0, height - 1)
+y2 = np.clip(y2, 0, height - 1)
+for i in range(3):
+    resImg[:,:,i] = ((srcImg[y1, x1, i] * (1-x) * (1-y) + srcImg[y1, x2, i] * x * (1-y) + 
+                     srcImg[y2, x1, i] * (1-x) * y + srcImg[y2, x2, i] * x * y) * mask).reshape(resH, resW)
 
 # show the result
-cv2.imshow('img', outImage)
+cv2.imshow('img', resImg)
 cv2.waitKey()
 
 # save image
-# cv2.imwrite('Images/ipm_test.png', outImage * 255)
+cv2.imwrite('%s_ipm.jpg' % imgPath.split('.')[0], resImg * 255)
