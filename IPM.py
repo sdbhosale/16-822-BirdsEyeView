@@ -22,22 +22,20 @@ def IPM(camParam, ROI, resH, resW):
     yMin, yMax = min(xyLimits[1]), max(xyLimits[1])
     stepRow = (yMax - yMin) / resH  # mm per vertical px
     stepCol = (xMax - xMin) / resW  # mm per horizontal px
-    print("Vertical scale: %.2f mm/px" % stepRow)
-    print("Horizontal scale: %.2f mm/px" % stepCol)
 
-    # Create a 2D array of x and y values, 
+    # Create a 2D grid of x and y values, 
     # with x increasing along the rows and y increasing along the columns
+    # The dimension of this grid matches the result BEV image
     x = np.arange(xMin + 0.5 * stepCol, xMax, stepCol)
     y = np.arange(yMax - 0.5 * stepRow, yMin, -stepRow)
     x, y = np.meshgrid(x, y)
-
     xyGrid = np.array([x.flatten(), y.flatten()])
 
-    # Back to the pixel space (image plane)
-    # to sample the source image
+    # Project back to the pixel space (image plane)
+    # to sample the source image with bilinear interpolation
     uvGrid = grd2img(xyGrid, camParam)
 
-    return uvGrid
+    return uvGrid, stepRow, stepCol
 
 
 if __name__ == '__main__':
@@ -55,7 +53,9 @@ if __name__ == '__main__':
 
     ROI = Decoder(cameras[camera_key][1])
     
-    uvGrid = IPM(camParam, ROI, resH, resW)
+    uvGrid, scaleH, scaleW = IPM(camParam, ROI, resH, resW)
+    print("Vertical scale: %.2f mm/px" % scaleH)
+    print("Horizontal scale: %.2f mm/px" % scaleW)
 
     # Mask of ROI
     mask = np.zeros(len(uvGrid[0]))
@@ -79,8 +79,18 @@ if __name__ == '__main__':
         resImg[:,:,i] = ((srcImg[y1, x1, i] * (1-x) * (1-y) + srcImg[y1, x2, i] * x * (1-y) + 
                         srcImg[y2, x1, i] * (1-x) * y + srcImg[y2, x2, i] * x * y) * mask).reshape(resH, resW)
 
+    # (OPTIONAL) Imageine now we detect a pot at (u, v) in srcImg
+    # We can get its 3D location easily as follows
+    pot = np.array([580, 850])  # u is column and v is row
+    img = cv2.circle(img, (pot[0], pot[1]), 5, (0, 0, 255), -1)
+    cv2.imshow('source', img)
+    cv2.waitKey()
+    pot = pot.reshape(-1, 1)
+    pot_x, pot_y = img2grd(pot, camParam).ravel()  # x right, y forward, z upward
+    print("Pot 3D position: ", pot_x, pot_y, 0)
+
     # show the result
-    cv2.imshow('img', resImg)
+    cv2.imshow('result', resImg)
     cv2.waitKey()
 
     # save image

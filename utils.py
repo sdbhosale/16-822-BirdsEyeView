@@ -71,7 +71,7 @@ Reference: Aly, Mohamed. "Real time detection of lane markers in urban streets."
 2008 IEEE intelligent vehicles symposium. IEEE, 2008.
 '''
 def grd2img(xyGrid, cam):
-	P = np.vstack((xyGrid, -cam.height * np.ones(len(xyGrid[1]))))
+	P = np.vstack((xyGrid, -cam.height * np.ones(len(xyGrid[0]))))
 	
 	c1 = cos(cam.pitch * pi / 180)
 	s1 = sin(cam.pitch * pi / 180)

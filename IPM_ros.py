@@ -19,8 +19,10 @@ class RealTimeIPM(object):
 
         ROI = Decoder(cameras[camera_key][1])
 
-        self.resH, self.resW = 640, 640
-        uvGrid = IPM(camParam, ROI, self.resH, self.resW)
+        self.resH, self.resW = 640, 960
+        uvGrid, scaleH, scaleW = IPM(camParam, ROI, self.resH, self.resW)
+        print("Vertical scale: %.2f mm/px" % scaleH)
+        print("Horizontal scale: %.2f mm/px" % scaleW)
 
         # Prepare for bilinear interpolation in the callback
         self.mask = np.zeros(len(uvGrid[0]))
